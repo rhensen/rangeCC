@@ -87,7 +87,7 @@ retday.wss<- function(fin,fu, fe, ccpm,h){
     fin2<- fin2%>% group_by(Name)%>%summarize_at(vars(rsprod_l,rsprod_r,rsprod_h),sum)
     fin.aum<- fin2 %>% group_by(Name)%>%summarize_at(vars(rsprod_l,rsprod_r,rsprod_h),function(col){((col*fe*fu)/h)/((ccpm*1.1)/30.4)})
     names(fin.aum)[2:4]<- c("Low","Average","High")
-    fin.aum<- fin.aum %>%mutate_if(is.numeric, ~365 * (. > 365))
+    fin.aum[,c(2:4)] <- lapply(fin.aum[,c(2:4)], function(x) ifelse(x>365, 365, x))
     return(fin.aum)
 }
 retac<- function(shp){
@@ -128,9 +128,10 @@ drawmap<- function(input){
         st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
         summarise(geometry = st_combine(geometry)) %>%
         st_cast("POLYGON")
-    polygon$Name<- "Polygon1"
+    polygon$Name<- "Pasture 1"
     polygon<- as(polygon, 'Spatial')
     return(polygon)}
+
 
 mf<- c(851,913,988,1064,1125,1186,1247,1295,547,638,832,913,1368,1155,135,182,228,152,152,182,547,182,182)
 mfcnam<- c("1000lb cow - dry", "1000lb cow - calf","1100lb cow - calf", "1200lb cow - calf","1300lb cow - calf",
@@ -205,12 +206,18 @@ ui <- fluidPage(theme = shinytheme("cerulean"),h1("Rangeland Carrying Capacity T
                                              br(),
                                              HTML('&emsp;'),h5("Upload your downloaded .KML file to this app",align = "left",style = "display: inline;"),
                                              h5("Step 3: Select your calculation type, forage utlization rate, percent of the total forage that is edible, animal type, and forage scenario",  align = "left"),
-                                             h5("Step 4: Adjust the forage levels of your polygon if needed on the Edit tab.",  align = "left"),
+                                             h5("Step 4: Click on the Carrying Capacity Map Tab to see capacity estimates and download your map. 
+                                                Adjust either the forage conditions or stocking parameter will update the map. You now can easily explore stocking rates under different scenarios.",  align = "left"),
+                                             h5("Step 5: If needed, adjust the forage estimates to more accurately reflect production conditions in the Edit Tab",  align = "left"),
                                              br(),
+
                                              br(),
-                                             br(),
-                                             h4("Note: This tool is not meant to replace on the ground forage assessments. The forage production in pastures of interest is likely to differ from these estimates and when managing animals, 
-                   on the ground forage assessments are still needed to ensure proper stocking",  align = "left"),
+                                             h4("Notes",align = "left"),
+                                             h5("1. This tool is not meant to replace on the ground forage assessments. The forage production in pastures of interest is likely to differ from these estimates and when managing animals, 
+                                              on the ground forage assessments are still needed to ensure proper stocking.",  align = "left"),
+                                             h5("2. All 'use day' estimates are in animal days, with respect to above ground forage production. Specific attention should be paid to when these pastures are grazed. For example, 500 head for ~12 days means there are approximately 12 days of use for the year, 
+                                             but that does not mean that 12 consective days will be the proper way to stock it. 
+                                             Consult local experts for more information on season of use.",  align = "left"),
                                              ),
                                     tabPanel("Draw Pastures",
                                              leafletOutput("map2", "100%", 650)                                         ),
@@ -218,7 +225,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),h1("Rangeland Carrying Capacity T
                                              h4("Carrying Capacity By Pasture", align = "center"),
                                              downloadButton("dl","Download Map"),
                                              leafletOutput("grazmap",width = "100%", height = 600)),
-                                    tabPanel("Edit Forage Estimates", h5("Click on a shape to edit its forage levels, then press save to update.", align = "center"),
+                                    tabPanel("Edit Forage Estimates", h5("Click on a shape and edit its forage levels by editting the cells that pop up, then press save to update.", align = "center"),
                                              p("Error will disappear once you click and edit an ecological site", align = "center"),
                                              leafletOutput("map",width = "100%", height = 600),
                                              p("NOTE: Mukey = SSURGO data key, rsprod_l = low forage conditions, rsprod_r = average forage conditions, rsprod_h = high forage conditions"),
@@ -245,7 +252,7 @@ server <- function(input, output,session) {
         modalDialog(
             span('Forage estimates are just that, estimates. These may differ from on the ground assessments.
                  Please email reid.hensen@colostate.edu for assistance or to report an error or mistake in the app. 
-                 Web soil survey data takes a weighted average of vegetation estimates and applies that average to the pasture acreage. This may mean that esimtates were applied to areas where no forage data was availble. If no data appear for a pasture, it is because there was no forage data were available for that pasture.'),
+                 Production Data come from the NRCS SSURGO database. Pastures sections with no available data are treated as 0s.'),
             footer = tagList(
                 modalButton("Got it"),
             )
@@ -286,8 +293,8 @@ server <- function(input, output,session) {
                                   acre_area=acre_area.x) %>% select(-acre_area.x, -acre_area.y,-rsprod_l.x,-rsprod_l.y,-rsprod_r.x,-rsprod_r.y,-rsprod_h.x,-rsprod_h.y)
                 
                 labels <- sprintf(
-                    "<strong>%s, %g total</strong><br/>%g acres<br/>%g Average lbs/acre/year",
-                    dd$Name, round(dd$total_acre,2),round(dd$acre_area,2),round(dd$rsprod_r,2)) %>% lapply(htmltools::HTML)
+                    "<strong>%s</strong><br/>%g acres<br/>%g Average lbs/acre/year",
+                    dd$Name,round(dd$acre_area,2),round(dd$rsprod_r,2)) %>% lapply(htmltools::HTML)
                 
                 pal<-colorNumeric("YlGnBu", dd$rsprod_r) 
                 leaflet(dd) %>%
@@ -335,6 +342,7 @@ server <- function(input, output,session) {
             if(input$type=="Number of Animals"){
                 plotdat<- retnum.wss(values$fin4,input$slid1/100,input$slid2/100,as.numeric(input$slid3),input$slid4)
                 plotdat<- plotdat[,c("Name", input$scen)]
+                shp2<- st_as_sf(uploadfile())
                 centers <- data.frame(gCentroid(uploadfile(), byid = TRUE))
                 centers$Name <- uploadfile()$Name
                 new<-  merge(plotdat,centers, by="Name")
@@ -343,7 +351,7 @@ server <- function(input, output,session) {
                 new$lab2<- paste(dayz,new$lab, sep="<br/>")
                 new$num<- new[,2]
                 ac<- retac(uploadfile())
-                mapp<- merge(uploadfile(),ac, by="Name")
+                mapp<- merge(shp2,ac, by="Name")
                 mapp<- merge(mapp,new, by="Name")
                 #center<- st_centroid(st_as_sf(uploadfile()()))
                 #mapp<- merge(uploadfile()(),ac, by="Name")
@@ -365,15 +373,17 @@ server <- function(input, output,session) {
             else{
                 plotdat<-  retday.wss(values$fin4,input$slid1/100,input$slid2/100,as.numeric(input$slid3),input$head)
                 plotdat<- plotdat[,c("Name", input$scen)]
+                shp2<- st_as_sf(uploadfile())
                 centers <- data.frame(gCentroid(uploadfile(), byid = TRUE))
                 centers$Name <- uploadfile()$Name
                 new<-  merge(plotdat,centers, by="Name")
                 new$lab<- paste("~",round(new[,2],0), " Days", sep= "")
+                new[which(new[,2]==365),"lab"]<-  paste(">",round(new[,2],0), " Days", sep= "")
                 headz<- paste(input$head, " Head" , sep=" ")
                 new$lab2<- paste(new$lab,headz, sep="<br/>")
                 new$num<- new[,2]
                 ac<- retac(uploadfile())
-                mapp<- merge(uploadfile(),ac, by="Name")
+                mapp<- merge(shp2,ac, by="Name")
                 mapp<- merge(mapp,new, by="Name")
                 #center<- st_centroid(st_as_sf(uploadfile()()))
                 #mapp<- merge(uploadfile()(),ac, by="Name")
@@ -451,13 +461,7 @@ server <- function(input, output,session) {
     }")
     })
     
-
-    ## go to this link to be able to save drawings and use them for calculations in the map. 
-        
-        #https://www.aj2duncan.com/blog/leaflet-draw-exporting-shapefiles-and-the-holepunch-package/
 }
 
 # Create Shiny app ----
 shinyApp(ui, server)
-
-
