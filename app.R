@@ -195,6 +195,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),h1("Rangeland Carrying Capacity T
                                     tabPanel("Instructions",
                                              br(),
                                              br(),
+                                             h4("Steps",align = "left"),
                                              h5("Step 1: Create a map of of your pastures.",align = "left"),
                                              HTML('&emsp;'),h5("You can create a polygon in the Draw tab",align = "left",style = "display: inline;"),
                                              br(),
@@ -205,12 +206,11 @@ ui <- fluidPage(theme = shinytheme("cerulean"),h1("Rangeland Carrying Capacity T
                                              a('For help with creating your pastures on google, click here', href = "http://reidhensen.info/wp-content/uploads/2021/02/read.me_-1.pdf",target="_blank", rel="noopener noreferrer",style = "display: inline;"),
                                              br(),
                                              HTML('&emsp;'),h5("Upload your downloaded .KML file to this app",align = "left",style = "display: inline;"),
-                                             h5("Step 3: Select your calculation type, forage utlization rate, percent of the total forage that is edible, animal type, and forage scenario",  align = "left"),
-                                             h5("Step 4: Click on the Carrying Capacity Map Tab to see capacity estimates and download your map. 
-                                                Adjust either the forage conditions or stocking parameter will update the map. You now can easily explore stocking rates under different scenarios.",  align = "left"),
-                                             h5("Step 5: If needed, adjust the forage estimates to more accurately reflect production conditions in the Edit Tab",  align = "left"),
+                                             h5("Step 2: Select your calculation type, forage utlization rate, percent of the total forage that is edible, animal type, and forage scenario",  align = "left"),
+                                             h5("Step 3: Click on the Carrying Capacity Map Tab to see capacity estimates and download your map. Map will appear once the loading spinner has stopped. 
+                                                Adjusting either the forage conditions or stocking parameter will update the map. Explore stocking rates under different scenarios!",  align = "left"),
+                                             h5("Step 4: If needed, adjust the forage estimates in the Edit Tab to more accurately reflect production conditions.",  align = "left"),
                                              br(),
-
                                              br(),
                                              h4("Notes",align = "left"),
                                              h5("1. This tool is not meant to replace on the ground forage assessments. The forage production in pastures of interest is likely to differ from these estimates and when managing animals, 
@@ -218,9 +218,16 @@ ui <- fluidPage(theme = shinytheme("cerulean"),h1("Rangeland Carrying Capacity T
                                              h5("2. All 'use day' estimates are in animal days, with respect to above ground forage production. Specific attention should be paid to when these pastures are grazed. For example, 500 head for ~12 days means there are approximately 12 days of use for the year, 
                                              but that does not mean that 12 consective days will be the proper way to stock it. 
                                              Consult local experts for more information on season of use.",  align = "left"),
-                                             ),
+                                             h5("3. Production estimates come from the NRCS ssurgo database.",  align = "left"),
+                                        
+                                
+                                br(),
+                                br(),
+                                p('App built and designed by Reid Hensen. See more at',style = "display: inline;"), 
+                                a('reidhensen.info',href = "http://www.reidhensen.info/",target="_blank", rel="noopener noreferrer",style = "display: inline;")
+                                    ),                                                                                                                                          
                                     tabPanel("Draw Pastures",
-                                             leafletOutput("map2", "100%", 650)                                         ),
+                                             leafletOutput("map2", "100%", 650)),
                                     tabPanel("Carrying Capacity Map",  
                                              h4("Carrying Capacity By Pasture", align = "center"),
                                              downloadButton("dl","Download Map"),
